@@ -24,11 +24,17 @@ type Metrics struct {
 
 	NPHostFirewallEnabled        metric.Gauge
 	NPLocalRedirectPolicyEnabled metric.Gauge
+	NPMutualAuthEnabled          metric.Gauge
+
+	ACLBTransparentEncryption       metric.Vec[metric.Gauge]
+	ACLBKubeProxyReplacementEnabled metric.Gauge
+	ACLBNodePortConfig              metric.Vec[metric.Gauge]
 }
 
 const (
-	subsystemDP = "feature_datapath"
-	subsystemNP = "feature_network_policies"
+	subsystemDP   = "feature_datapath"
+	subsystemNP   = "feature_network_policies"
+	subsystemACLB = "feature_adv_connect_and_lb"
 )
 
 const (
@@ -46,6 +52,9 @@ const (
 	networkIPv4      = "ipv4-only"
 	networkIPv6      = "ipv6-only"
 	networkDualStack = "ipv4-ipv6-dual-stack"
+
+	advConnNetEncIPSec     = "ipsec"
+	advConnNetEncWireGuard = "wireguard"
 )
 
 var (
@@ -89,6 +98,28 @@ var (
 	defaultDeviceModes = []string{
 		datapathOption.DatapathModeVeth,
 		datapathOption.DatapathModeLBOnly,
+	}
+
+	defaultEncryptionModes = []string{
+		advConnNetEncIPSec,
+		advConnNetEncWireGuard,
+	}
+
+	defaultNodePortModes = []string{
+		option.NodePortModeSNAT,
+		option.NodePortModeDSR,
+		option.NodePortModeHybrid,
+	}
+
+	defaultNodePortModeAlgorithms = []string{
+		option.NodePortAlgMaglev,
+		option.NodePortAlgRandom,
+	}
+
+	defaultNodePortModeAccelerations = []string{
+		option.NodePortAccelerationDisabled,
+		option.NodePortAccelerationGeneric,
+		option.NodePortAccelerationNative,
 	}
 )
 
@@ -224,6 +255,87 @@ func NewMetrics(withDefaults bool) Metrics {
 			Subsystem: subsystemNP,
 			Name:      "local_redirect_policy_enabled",
 		}),
+
+		NPMutualAuthEnabled: metric.NewGauge(metric.GaugeOpts{
+			Help:      "Mutual Auth enabled on the agent",
+			Namespace: metrics.Namespace,
+			Subsystem: subsystemNP,
+			Name:      "mutual_auth_enabled",
+		}),
+
+		ACLBTransparentEncryption: metric.NewGaugeVecWithLabels(metric.GaugeOpts{
+			Help:      "Encryption mode enabled on the agent",
+			Namespace: metrics.Namespace,
+			Subsystem: subsystemACLB,
+			Name:      "transparent_encryption",
+		}, metric.Labels{
+			{
+				Name: "mode", Values: func() metric.Values {
+					if !withDefaults {
+						return nil
+					}
+					return metric.NewValues(
+						defaultEncryptionModes...,
+					)
+				}(),
+			},
+			{
+				Name: "node2node_enabled", Values: func() metric.Values {
+					if !withDefaults {
+						return nil
+					}
+					return metric.NewValues(
+						"true",
+						"false",
+					)
+				}(),
+			},
+		}),
+
+		ACLBKubeProxyReplacementEnabled: metric.NewGauge(metric.GaugeOpts{
+			Help:      "KubeProxyReplacement enabled on the agent",
+			Namespace: metrics.Namespace,
+			Subsystem: subsystemACLB,
+			Name:      "kube_proxy_replacement_enabled",
+		}),
+
+		ACLBNodePortConfig: metric.NewGaugeVecWithLabels(metric.GaugeOpts{
+			Help:      "Node Port configuration enabled on the agent",
+			Namespace: metrics.Namespace,
+			Subsystem: subsystemACLB,
+			Name:      "node_port_configuration",
+		}, metric.Labels{
+			{
+				Name: "mode", Values: func() metric.Values {
+					if !withDefaults {
+						return nil
+					}
+					return metric.NewValues(
+						defaultNodePortModes...,
+					)
+				}(),
+			},
+			{
+				Name: "algorithm", Values: func() metric.Values {
+					if !withDefaults {
+						return nil
+					}
+					return metric.NewValues(
+						defaultNodePortModeAlgorithms...,
+					)
+				}(),
+			},
+			{
+				Name: "acceleration", Values: func() metric.Values {
+					if !withDefaults {
+						return nil
+					}
+					return metric.NewValues(
+						defaultNodePortModeAccelerations...,
+					)
+				}(),
+			},
+		}),
 	}
 }
 
@@ -277,4 +389,29 @@ func (m Metrics) update(params enabledFeatures, config *option.DaemonConfig) {
 	if config.EnableLocalRedirectPolicy {
 		m.NPLocalRedirectPolicyEnabled.Add(1)
 	}
+
+	if params.IsMutualAuthEnabled() {
+		m.NPMutualAuthEnabled.Add(1)
+	}
+
+	if config.EnableIPSec {
+		if config.EncryptNode {
+			m.ACLBTransparentEncryption.WithLabelValues(advConnNetEncIPSec, "true").Add(1)
+		} else {
+			m.ACLBTransparentEncryption.WithLabelValues(advConnNetEncIPSec, "false").Add(1)
+		}
+	}
+	if config.EnableWireguard {
+		if config.EncryptNode {
+			m.ACLBTransparentEncryption.WithLabelValues(advConnNetEncWireGuard, "true").Add(1)
+		} else {
+			m.ACLBTransparentEncryption.WithLabelValues(advConnNetEncWireGuard, "false").Add(1)
+		}
+	}
+
+	if config.KubeProxyReplacement == option.KubeProxyReplacementTrue {
+		m.ACLBKubeProxyReplacementEnabled.Add(1)
+	}
+
+	m.ACLBNodePortConfig.WithLabelValues(config.NodePortMode, config.NodePortAlg, config.NodePortAcceleration).Add(1)
 }

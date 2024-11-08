@@ -16,6 +16,7 @@ import (
 type mockFeaturesParams struct {
 	TunnelConfig    string
 	CNIChainingMode string
+	MutualAuth      bool
 }
 
 func (m mockFeaturesParams) TunnelProtocol() string {
@@ -24,6 +25,10 @@ func (m mockFeaturesParams) TunnelProtocol() string {
 
 func (m mockFeaturesParams) GetChainingMode() string {
 	return m.CNIChainingMode
+}
+
+func (m mockFeaturesParams) IsMutualAuthEnabled() bool {
+	return m.MutualAuth
 }
 
 func TestUpdateNetworkMode(t *testing.T) {
@@ -58,9 +63,12 @@ func TestUpdateNetworkMode(t *testing.T) {
 			config := &option.DaemonConfig{
 				DatapathMode:           defaults.DatapathMode,
 				IPAM:                   defaultIPAMModes[0],
-				RoutingMode:            tt.tunnelMode,
 				EnableIPv4:             true,
 				IdentityAllocationMode: defaultIdentityAllocationModes[0],
+				NodePortMode:           defaultNodePortModes[0],
+				NodePortAlg:            defaultNodePortModeAlgorithms[0],
+				NodePortAcceleration:   defaultNodePortModeAccelerations[0],
+				RoutingMode:            tt.tunnelMode,
 			}
 
 			params := mockFeaturesParams{
@@ -106,9 +114,12 @@ func TestUpdateIPAMMode(t *testing.T) {
 			metrics := NewMetrics(true)
 			config := &option.DaemonConfig{
 				DatapathMode:           defaults.DatapathMode,
-				IPAM:                   tt.IPAMMode,
 				EnableIPv4:             true,
 				IdentityAllocationMode: defaultIdentityAllocationModes[0],
+				NodePortMode:           defaultNodePortModes[0],
+				NodePortAlg:            defaultNodePortModeAlgorithms[0],
+				NodePortAcceleration:   defaultNodePortModeAccelerations[0],
+				IPAM:                   tt.IPAMMode,
 			}
 
 			params := mockFeaturesParams{
@@ -156,6 +167,9 @@ func TestUpdateCNIChainingMode(t *testing.T) {
 				IPAM:                   defaultIPAMModes[0],
 				EnableIPv4:             true,
 				IdentityAllocationMode: defaultIdentityAllocationModes[0],
+				NodePortMode:           defaultNodePortModes[0],
+				NodePortAlg:            defaultNodePortModeAlgorithms[0],
+				NodePortAcceleration:   defaultNodePortModeAccelerations[0],
 			}
 
 			params := mockFeaturesParams{
@@ -211,9 +225,12 @@ func TestUpdateInternetProtocol(t *testing.T) {
 			config := &option.DaemonConfig{
 				DatapathMode:           defaults.DatapathMode,
 				IPAM:                   defaultIPAMModes[0],
+				IdentityAllocationMode: defaultIdentityAllocationModes[0],
+				NodePortMode:           defaultNodePortModes[0],
+				NodePortAlg:            defaultNodePortModeAlgorithms[0],
+				NodePortAcceleration:   defaultNodePortModeAccelerations[0],
 				EnableIPv4:             tt.enableIPv4,
 				EnableIPv6:             tt.enableIPv6,
-				IdentityAllocationMode: defaultIdentityAllocationModes[0],
 			}
 
 			params := mockFeaturesParams{
@@ -260,6 +277,9 @@ func TestUpdateIdentityAllocationMode(t *testing.T) {
 				DatapathMode:           defaults.DatapathMode,
 				IPAM:                   defaultIPAMModes[0],
 				EnableIPv4:             true,
+				NodePortMode:           defaultNodePortModes[0],
+				NodePortAlg:            defaultNodePortModeAlgorithms[0],
+				NodePortAcceleration:   defaultNodePortModeAccelerations[0],
 				IdentityAllocationMode: tt.identityAllocationMode,
 			}
 
@@ -311,6 +331,9 @@ func TestUpdateCiliumEndpointSlices(t *testing.T) {
 				IPAM:                      defaultIPAMModes[0],
 				EnableIPv4:                true,
 				IdentityAllocationMode:    defaultIdentityAllocationModes[0],
+				NodePortMode:              defaultNodePortModes[0],
+				NodePortAlg:               defaultNodePortModeAlgorithms[0],
+				NodePortAcceleration:      defaultNodePortModeAccelerations[0],
 				EnableCiliumEndpointSlice: tt.enableCES,
 			}
 
@@ -353,6 +376,9 @@ func TestUpdateHostFirewall(t *testing.T) {
 				EnableIPv4:             true,
 				IdentityAllocationMode: defaultIdentityAllocationModes[0],
 				DatapathMode:           defaultDeviceModes[0],
+				NodePortMode:           defaultNodePortModes[0],
+				NodePortAlg:            defaultNodePortModeAlgorithms[0],
+				NodePortAcceleration:   defaultNodePortModeAccelerations[0],
 				EnableHostFirewall:     tt.enableHostFirewall,
 			}
 
@@ -394,6 +420,9 @@ func TestUpdateLocalRedirectPolicies(t *testing.T) {
 				EnableIPv4:                true,
 				IdentityAllocationMode:    defaultIdentityAllocationModes[0],
 				DatapathMode:              defaultDeviceModes[0],
+				NodePortMode:              defaultNodePortModes[0],
+				NodePortAlg:               defaultNodePortModeAlgorithms[0],
+				NodePortAcceleration:      defaultNodePortModeAccelerations[0],
 				EnableLocalRedirectPolicy: tt.enableLRP,
 			}
 
@@ -405,6 +434,252 @@ func TestUpdateLocalRedirectPolicies(t *testing.T) {
 
 			counterValue := metrics.NPLocalRedirectPolicyEnabled.Get()
 			assert.Equal(t, tt.expected, counterValue, "Expected value to be %.f for enabled: %t, got %.f", tt.expected, tt.enableLRP, counterValue)
+		})
+	}
+}
+
+func TestUpdateMutualAuth(t *testing.T) {
+	tests := []struct {
+		name             string
+		enableMutualAuth bool
+		expected         float64
+	}{
+		{
+			name:             "MutualAuth enabled",
+			enableMutualAuth: true,
+			expected:         1,
+		},
+		{
+			name:             "MutualAuth disabled",
+			enableMutualAuth: false,
+			expected:         0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			metrics := NewMetrics(true)
+			config := &option.DaemonConfig{
+				IPAM:                   defaultIPAMModes[0],
+				EnableIPv4:             true,
+				IdentityAllocationMode: defaultIdentityAllocationModes[0],
+				DatapathMode:           defaultDeviceModes[0],
+				NodePortMode:           defaultNodePortModes[0],
+				NodePortAlg:            defaultNodePortModeAlgorithms[0],
+				NodePortAcceleration:   defaultNodePortModeAccelerations[0],
+			}
+
+			params := mockFeaturesParams{
+				CNIChainingMode: defaultChainingModes[0],
+				MutualAuth:      tt.enableMutualAuth,
+			}
+
+			metrics.update(params, config)
+
+			counterValue := metrics.NPMutualAuthEnabled.Get()
+			assert.Equal(t, tt.expected, counterValue, "Expected value to be %.f for enabled: %t, got %.f", tt.expected, tt.enableMutualAuth, counterValue)
+		})
+	}
+}
+
+func TestUpdateEncryptionMode(t *testing.T) {
+	tests := []struct {
+		name                      string
+		enableIPSec               bool
+		enableWireguard           bool
+		enableNode2NodeEncryption bool
+
+		expectEncryptionMode      string
+		expectNode2NodeEncryption string
+	}{
+		{
+			name:                      "IPSec enabled",
+			enableIPSec:               true,
+			expectEncryptionMode:      advConnNetEncIPSec,
+			expectNode2NodeEncryption: "false",
+		},
+		{
+			name:                      "IPSec disabled",
+			enableIPSec:               false,
+			expectEncryptionMode:      "",
+			expectNode2NodeEncryption: "",
+		},
+		{
+			name:                      "IPSec enabled w/ node2node",
+			enableIPSec:               true,
+			enableNode2NodeEncryption: true,
+			expectEncryptionMode:      advConnNetEncIPSec,
+			expectNode2NodeEncryption: "true",
+		},
+		{
+			name:                      "Wireguard enabled",
+			enableWireguard:           true,
+			expectEncryptionMode:      advConnNetEncWireGuard,
+			expectNode2NodeEncryption: "false",
+		},
+		{
+			name:                      "Wireguard enabled w/ node2node",
+			enableWireguard:           true,
+			enableNode2NodeEncryption: true,
+			expectEncryptionMode:      advConnNetEncWireGuard,
+			expectNode2NodeEncryption: "true",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			metrics := NewMetrics(true)
+			config := &option.DaemonConfig{
+				IPAM:                   defaultIPAMModes[0],
+				EnableIPv4:             true,
+				IdentityAllocationMode: defaultIdentityAllocationModes[0],
+				DatapathMode:           defaultDeviceModes[0],
+				NodePortMode:           defaultNodePortModes[0],
+				NodePortAlg:            defaultNodePortModeAlgorithms[0],
+				NodePortAcceleration:   defaultNodePortModeAccelerations[0],
+				EnableIPSec:            tt.enableIPSec,
+				EnableWireguard:        tt.enableWireguard,
+				EncryptNode:            tt.enableNode2NodeEncryption,
+			}
+
+			params := mockFeaturesParams{
+				CNIChainingMode: defaultChainingModes[0],
+			}
+
+			metrics.update(params, config)
+
+			// Check that only the expected mode's counter is incremented
+			for _, encMode := range defaultEncryptionModes {
+				for _, node2node := range []string{"true", "false"} {
+					counter, err := metrics.ACLBTransparentEncryption.GetMetricWithLabelValues(encMode, node2node)
+					assert.NoError(t, err)
+
+					counterValue := counter.Get()
+					if encMode == tt.expectEncryptionMode && node2node == tt.expectNode2NodeEncryption {
+						assert.Equal(t, float64(1), counterValue, "Expected mode %s to be incremented", encMode)
+					} else {
+						assert.Equal(t, float64(0), counterValue, "Expected mode %s to remain at 0", encMode)
+					}
+				}
+			}
+		})
+	}
+}
+
+func TestUpdateKubeProxyReplacement(t *testing.T) {
+	tests := []struct {
+		name                       string
+		enableKubeProxyReplacement string
+		expected                   float64
+	}{
+		{
+			name:                       "KubeProxyReplacement enabled",
+			enableKubeProxyReplacement: "true",
+			expected:                   1,
+		},
+		{
+			name:                       "KubeProxyReplacement disabled",
+			enableKubeProxyReplacement: "false",
+			expected:                   0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			metrics := NewMetrics(true)
+			config := &option.DaemonConfig{
+				IPAM:                   defaultIPAMModes[0],
+				EnableIPv4:             true,
+				IdentityAllocationMode: defaultIdentityAllocationModes[0],
+				DatapathMode:           defaultDeviceModes[0],
+				NodePortMode:           defaultNodePortModes[0],
+				NodePortAlg:            defaultNodePortModeAlgorithms[0],
+				NodePortAcceleration:   defaultNodePortModeAccelerations[0],
+				KubeProxyReplacement:   tt.enableKubeProxyReplacement,
+			}
+
+			params := mockFeaturesParams{
+				CNIChainingMode: defaultChainingModes[0],
+			}
+
+			metrics.update(params, config)
+
+			counterValue := metrics.ACLBKubeProxyReplacementEnabled.Get()
+			assert.Equal(t, tt.expected, counterValue, "Expected value to be %.f for enabled: %t, got %.f", tt.expected, tt.enableKubeProxyReplacement, counterValue)
+		})
+	}
+}
+
+func TestUpdateStandaloneNSLB(t *testing.T) {
+	type testCase struct {
+		name             string
+		portMode         string
+		algoMode         string
+		accelerationMode string
+
+		expectedPortMode         string
+		expectedAlgoMode         string
+		expectedAccelerationMode string
+	}
+	var tests []testCase
+	for _, portMode := range defaultNodePortModes {
+		for _, algoMode := range defaultNodePortModeAlgorithms {
+			for _, aclMode := range defaultNodePortModeAccelerations {
+				tests = append(tests, testCase{
+					name:             fmt.Sprintf("NSLB %s - %s - %s", portMode, algoMode, aclMode),
+					portMode:         portMode,
+					algoMode:         algoMode,
+					accelerationMode: aclMode,
+
+					expectedPortMode:         portMode,
+					expectedAlgoMode:         algoMode,
+					expectedAccelerationMode: aclMode,
+				})
+			}
+		}
+	}
+	tests = append(tests, testCase{
+		name:             "NSLB disabled",
+		accelerationMode: option.NodePortAccelerationDisabled,
+	})
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			metrics := NewMetrics(true)
+			config := &option.DaemonConfig{
+				IPAM:                   defaultIPAMModes[0],
+				EnableIPv4:             true,
+				IdentityAllocationMode: defaultIdentityAllocationModes[0],
+				DatapathMode:           defaultDeviceModes[0],
+				NodePortMode:           tt.portMode,
+				NodePortAlg:            tt.algoMode,
+				NodePortAcceleration:   tt.accelerationMode,
+			}
+
+			params := mockFeaturesParams{
+				CNIChainingMode: defaultChainingModes[0],
+			}
+
+			metrics.update(params, config)
+
+			// Check that only the expected mode's counter is incremented
+			for _, portMode := range defaultNodePortModes {
+				for _, algoMode := range defaultNodePortModeAlgorithms {
+					for _, aclMode := range defaultNodePortModeAccelerations {
+						counter, err := metrics.ACLBNodePortConfig.GetMetricWithLabelValues(portMode, algoMode, aclMode)
+						assert.NoError(t, err)
+
+						counterValue := counter.Get()
+						if portMode == tt.expectedPortMode &&
+							algoMode == tt.expectedAlgoMode &&
+							aclMode == tt.expectedAccelerationMode {
+							assert.Equal(t, float64(1), counterValue, "Expected mode %s - %s - %s to be incremented", portMode, algoMode, aclMode)
+						} else {
+							assert.Equal(t, float64(0), counterValue, "Expected mode %s - %s - %s to remain at 0", portMode, algoMode, aclMode)
+						}
+					}
+				}
+			}
 		})
 	}
 }
