@@ -5,6 +5,7 @@ package features
 
 import (
 	operatorOption "github.com/cilium/cilium/operator/option"
+	"github.com/cilium/cilium/operator/pkg/lbipam"
 	"github.com/cilium/cilium/pkg/hive/cell"
 	"github.com/cilium/cilium/pkg/hive/job"
 )
@@ -36,12 +37,23 @@ type featuresParams struct {
 	Metrics     featureMetrics
 
 	OperatorConfig *operatorOption.OperatorConfig
+	LBIPAM         lbipam.Config
 }
 
 func (p featuresParams) IsIngressControllerEnabled() bool {
 	return operatorOption.Config.EnableIngressController
 }
 
+func (p featuresParams) IsLBIPAMEnabled() bool {
+	return p.LBIPAM.IsEnabled()
+}
+
+func (p featuresParams) GetLoadBalancerL7() string {
+	return operatorOption.Config.LoadBalancerL7
+}
+
 type enabledFeatures interface {
 	IsIngressControllerEnabled() bool
+	IsLBIPAMEnabled() bool
+	GetLoadBalancerL7() string
 }
