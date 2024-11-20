@@ -40,6 +40,11 @@ type Metrics struct {
 	ACLBL2LBEnabled                 metric.Gauge
 	ACLBL2PodAnnouncementEnabled    metric.Gauge
 	ACLBExternalEnvoyProxyEnabled   metric.Vec[metric.Gauge]
+
+	NPL3Ingested                metric.Vec[metric.Counter]
+	NPDNSIngested               metric.Vec[metric.Counter]
+	NPHTTPIngested              metric.Vec[metric.Counter]
+	NPHTTPHeaderMatchesIngested metric.Vec[metric.Counter]
 }
 
 const (
@@ -74,6 +79,8 @@ const (
 
 	advConnExtEnvoyProxyStandalone = "standalone"
 	advConnExtEnvoyProxyEmbedded   = "embedded"
+	actionAdd                      = "add"
+	actionDel                      = "delete"
 )
 
 var (
@@ -150,6 +157,10 @@ var (
 	defaultExternalEnvoyProxyModes = []string{
 		advConnExtEnvoyProxyStandalone,
 		advConnExtEnvoyProxyEmbedded,
+	}
+	defaultActions = []string{
+		actionAdd,
+		actionDel,
 	}
 )
 
@@ -454,6 +465,78 @@ func NewMetrics(withDefaults bool) Metrics {
 					}
 					return metric.NewValues(
 						defaultExternalEnvoyProxyModes...,
+					)
+				}(),
+			},
+		}),
+
+		NPL3Ingested: metric.NewCounterVecWithLabels(metric.CounterOpts{
+			Help:      "Layer 3 and Layer 4 policies have been ingested since the agent started",
+			Namespace: metrics.Namespace,
+			Subsystem: subsystemNP,
+			Name:      "l3_policies_total",
+		}, metric.Labels{
+			{
+				Name: "action", Values: func() metric.Values {
+					if !withDefaults {
+						return nil
+					}
+					return metric.NewValues(
+						defaultActions...,
+					)
+				}(),
+			},
+		}),
+
+		NPDNSIngested: metric.NewCounterVecWithLabels(metric.CounterOpts{
+			Help:      "DNS Policies have been ingested since the agent started",
+			Namespace: metrics.Namespace,
+			Subsystem: subsystemNP,
+			Name:      "dns_policies_total",
+		}, metric.Labels{
+			{
+				Name: "action", Values: func() metric.Values {
+					if !withDefaults {
+						return nil
+					}
+					return metric.NewValues(
+						defaultActions...,
+					)
+				}(),
+			},
+		}),
+
+		NPHTTPIngested: metric.NewCounterVecWithLabels(metric.CounterOpts{
+			Help:      "HTTP/GRPC Policies have been ingested since the agent started",
+			Namespace: metrics.Namespace,
+			Subsystem: subsystemNP,
+			Name:      "http_policies_total",
+		}, metric.Labels{
+			{
+				Name: "action", Values: func() metric.Values {
+					if !withDefaults {
+						return nil
+					}
+					return metric.NewValues(
+						defaultActions...,
+					)
+				}(),
+			},
+		}),
+
+		NPHTTPHeaderMatchesIngested: metric.NewCounterVecWithLabels(metric.CounterOpts{
+			Help:      "HTTP HeaderMatches Policies have been ingested since the agent started",
+			Namespace: metrics.Namespace,
+			Subsystem: subsystemNP,
+			Name:      "http_header_matches_policies_total",
+		}, metric.Labels{
+			{
+				Name: "action", Values: func() metric.Values {
+					if !withDefaults {
+						return nil
+					}
+					return metric.NewValues(
+						defaultActions...,
 					)
 				}(),
 			},
