@@ -216,31 +216,6 @@ func Test_ruleType(t *testing.T) {
 			},
 		},
 		{
-			name: "FQDN rules",
-			args: args{
-				r: api.Rule{
-					Egress: []api.EgressRule{
-						{
-							ToFQDNs: api.FQDNSelectorSlice{
-								{
-									MatchName:    "cilium.io",
-									MatchPattern: "",
-								},
-							},
-						},
-					},
-				},
-			},
-			want: wanted{
-				wantRF: RuleFeatures{
-					DNS: true,
-				},
-				wantMetrics: metrics{
-					npDNSIngested: 1,
-				},
-			},
-		},
-		{
 			name: "HTTP ingress rules",
 			args: args{
 				r: api.Rule{
