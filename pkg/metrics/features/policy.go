@@ -13,6 +13,8 @@ type RuleFeatures struct {
 	HTTP              bool
 	HTTPHeaderMatches bool
 	OtherL7           bool
+	Deny              bool
+	IngressCIDRGroup  bool
 }
 
 func (m Metrics) AddRule(r api.Rule) {
@@ -32,6 +34,12 @@ func (m Metrics) AddRule(r api.Rule) {
 	}
 	if rf.OtherL7 {
 		m.NPOtherL7Ingested.WithLabelValues(actionAdd).Inc()
+	}
+	if rf.Deny {
+		m.NPDenyPoliciesIngested.WithLabelValues(actionAdd).Inc()
+	}
+	if rf.IngressCIDRGroup {
+		m.NPIngressCIDRGroupIngested.WithLabelValues(actionAdd).Inc()
 	}
 }
 
@@ -53,10 +61,16 @@ func (m Metrics) DelRule(r api.Rule) {
 	if rf.OtherL7 {
 		m.NPOtherL7Ingested.WithLabelValues(actionDel).Inc()
 	}
+	if rf.Deny {
+		m.NPDenyPoliciesIngested.WithLabelValues(actionDel).Inc()
+	}
+	if rf.IngressCIDRGroup {
+		m.NPIngressCIDRGroupIngested.WithLabelValues(actionDel).Inc()
+	}
 }
 
 func (rf *RuleFeatures) allFeaturesIngressCommon() bool {
-	return rf.L3
+	return rf.L3 && rf.IngressCIDRGroup
 }
 
 func (rf *RuleFeatures) allFeaturesEgressCommon() bool {
@@ -70,6 +84,7 @@ func (rf *RuleFeatures) allFeaturesPortRules() bool {
 func ruleTypeIngressCommon(rf *RuleFeatures, i api.IngressCommonRule) {
 	for _, cidrRuleSet := range i.FromCIDRSet {
 		if cidrRuleSet.CIDRGroupRef != "" {
+			rf.IngressCIDRGroup = true
 			rf.L3 = true
 		}
 	}
@@ -122,10 +137,11 @@ func ruleType(r api.Rule) RuleFeatures {
 		}
 	}
 
-	if !(rf.allFeaturesIngressCommon()) {
+	if !(rf.allFeaturesIngressCommon() && rf.Deny) {
 		for _, i := range r.IngressDeny {
 			ruleTypeIngressCommon(&rf, i.IngressCommonRule)
-			if rf.allFeaturesIngressCommon() {
+			rf.Deny = true
+			if rf.allFeaturesIngressCommon() && rf.Deny {
 				break
 			}
 		}
@@ -146,10 +162,11 @@ func ruleType(r api.Rule) RuleFeatures {
 		}
 	}
 
-	if !(rf.allFeaturesEgressCommon()) {
+	if !(rf.allFeaturesEgressCommon() && rf.Deny) {
 		for _, e := range r.EgressDeny {
+			rf.Deny = true
 			ruleTypeEgressCommon(&rf, e.EgressCommonRule)
-			if rf.allFeaturesEgressCommon() {
+			if rf.allFeaturesEgressCommon() && rf.Deny {
 				break
 			}
 		}
