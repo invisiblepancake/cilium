@@ -25,6 +25,8 @@ func Test_ruleType(t *testing.T) {
 		npDenyPoliciesIngested      float64
 		npIngressCIDRGroupIngested  float64
 		npMutualAuthIngested        float64
+		npTLSInspectionIngested     float64
+		npSNIAllowListIngested      float64
 	}
 	type wanted struct {
 		wantRF      RuleFeatures
@@ -329,13 +331,14 @@ func Test_ruleType(t *testing.T) {
 			},
 		},
 		{
-			name: "HTTP matches egress rules and other L7",
+			name: "HTTP matches egress rules, other L7 and SNI",
 			args: args{
 				r: api.Rule{
 					Egress: []api.EgressRule{
 						{
 							ToPorts: api.PortRules{
 								{
+									ServerNames: []string{""},
 									Rules: &api.L7Rules{
 										HTTP: []api.PortRuleHTTP{
 											{
@@ -359,11 +362,37 @@ func Test_ruleType(t *testing.T) {
 					HTTP:              true,
 					HTTPHeaderMatches: true,
 					OtherL7:           true,
+					SNIAllowList:      true,
 				},
 				wantMetrics: metrics{
 					npHTTPIngested:              1,
 					npHTTPHeaderMatchesIngested: 1,
 					npOtherL7Ingested:           1,
+					npSNIAllowListIngested:      1,
+				},
+			},
+		},
+		{
+			name: "Rules matches on TLS",
+			args: args{
+				r: api.Rule{
+					Egress: []api.EgressRule{
+						{
+							ToPorts: api.PortRules{
+								{
+									TerminatingTLS: &api.TLSContext{},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: wanted{
+				wantRF: RuleFeatures{
+					TLSInspection: true,
+				},
+				wantMetrics: metrics{
+					npTLSInspectionIngested: 1,
 				},
 			},
 		},
@@ -392,6 +421,10 @@ func Test_ruleType(t *testing.T) {
 			assert.Equalf(t, float64(0), metrics.NPIngressCIDRGroupIngested.WithLabelValues(actionDel).Get(), "IngressCIDRGroupIngested different")
 			assert.Equalf(t, tt.want.wantMetrics.npMutualAuthIngested, metrics.NPMutualAuthIngested.WithLabelValues(actionAdd).Get(), "MutualAuthIngested different")
 			assert.Equalf(t, float64(0), metrics.NPMutualAuthIngested.WithLabelValues(actionDel).Get(), "MutualAuthIngested different")
+			assert.Equalf(t, tt.want.wantMetrics.npTLSInspectionIngested, metrics.NPTLSInspectionIngested.WithLabelValues(actionAdd).Get(), "TLSInspectionIngested different")
+			assert.Equalf(t, float64(0), metrics.NPTLSInspectionIngested.WithLabelValues(actionDel).Get(), "TLSInspectionIngested different")
+			assert.Equalf(t, tt.want.wantMetrics.npSNIAllowListIngested, metrics.NPSNIAllowListIngested.WithLabelValues(actionAdd).Get(), "SNIAllowListIngested different")
+			assert.Equalf(t, float64(0), metrics.NPSNIAllowListIngested.WithLabelValues(actionDel).Get(), "SNIAllowListIngested different")
 
 			metrics.DelRule(tt.args.r)
 
@@ -411,6 +444,10 @@ func Test_ruleType(t *testing.T) {
 			assert.Equalf(t, tt.want.wantMetrics.npIngressCIDRGroupIngested, metrics.NPIngressCIDRGroupIngested.WithLabelValues(actionDel).Get(), "NPIngressCIDRGroupIngested different")
 			assert.Equalf(t, tt.want.wantMetrics.npMutualAuthIngested, metrics.NPMutualAuthIngested.WithLabelValues(actionAdd).Get(), "NPMutualAuthIngested different")
 			assert.Equalf(t, tt.want.wantMetrics.npMutualAuthIngested, metrics.NPMutualAuthIngested.WithLabelValues(actionDel).Get(), "NPMutualAuthIngested different")
+			assert.Equalf(t, tt.want.wantMetrics.npTLSInspectionIngested, metrics.NPTLSInspectionIngested.WithLabelValues(actionAdd).Get(), "NPTLSInspectionIngested different")
+			assert.Equalf(t, tt.want.wantMetrics.npTLSInspectionIngested, metrics.NPTLSInspectionIngested.WithLabelValues(actionDel).Get(), "NPTLSInspectionIngested different")
+			assert.Equalf(t, tt.want.wantMetrics.npSNIAllowListIngested, metrics.NPSNIAllowListIngested.WithLabelValues(actionAdd).Get(), "NPSNIAllowListIngested different")
+			assert.Equalf(t, tt.want.wantMetrics.npSNIAllowListIngested, metrics.NPSNIAllowListIngested.WithLabelValues(actionDel).Get(), "NPSNIAllowListIngested different")
 
 		})
 	}
