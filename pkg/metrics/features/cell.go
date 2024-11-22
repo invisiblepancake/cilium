@@ -12,6 +12,8 @@ import (
 	"github.com/cilium/cilium/pkg/datapath/types"
 	"github.com/cilium/cilium/pkg/hive/cell"
 	"github.com/cilium/cilium/pkg/hive/job"
+	"github.com/cilium/cilium/pkg/k8s"
+	"github.com/cilium/cilium/pkg/k8s/watchers"
 	"github.com/cilium/cilium/pkg/option"
 	"github.com/cilium/cilium/pkg/policy/api"
 	"github.com/cilium/cilium/pkg/promise"
@@ -39,6 +41,15 @@ var Cell = cell.Module(
 			return m
 		},
 		func(m Metrics) redirectpolicy.LRPMetrics {
+			return m
+		},
+		func(m Metrics) k8s.SVCMetrics {
+			return m
+		},
+		func(m Metrics) watchers.CECMetrics {
+			return m
+		},
+		func(m Metrics) watchers.CNPMetrics {
 			return m
 		},
 	),
