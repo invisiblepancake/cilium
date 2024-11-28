@@ -639,7 +639,7 @@ func TestUpdateKubeProxyReplacement(t *testing.T) {
 	}
 }
 
-func TestUpdateStandaloneNSLB(t *testing.T) {
+func TestUpdateNodePortConfig(t *testing.T) {
 	type testCase struct {
 		name             string
 		portMode         string
@@ -655,7 +655,7 @@ func TestUpdateStandaloneNSLB(t *testing.T) {
 		for _, algoMode := range defaultNodePortModeAlgorithms {
 			for _, aclMode := range defaultNodePortModeAccelerations {
 				tests = append(tests, testCase{
-					name:             fmt.Sprintf("NSLB %s - %s - %s", portMode, algoMode, aclMode),
+					name:             fmt.Sprintf("NodePortConfig %s - %s - %s", portMode, algoMode, aclMode),
 					portMode:         portMode,
 					algoMode:         algoMode,
 					accelerationMode: aclMode,
@@ -667,10 +667,6 @@ func TestUpdateStandaloneNSLB(t *testing.T) {
 			}
 		}
 	}
-	tests = append(tests, testCase{
-		name:             "NSLB disabled",
-		accelerationMode: option.NodePortAccelerationDisabled,
-	})
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
