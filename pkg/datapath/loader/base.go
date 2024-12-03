@@ -398,6 +398,28 @@ func (l *loader) Reinitialize(ctx context.Context, cfg *datapath.LocalNodeConfig
 			tables.Sysctl{Name: []string{"net", "ipv6", "conf", "all", "disable_ipv6"}, Val: "0", IgnoreErr: false})
 	}
 
+	// When IPSec is enabled the Cilium datapath will hairpin traffic leaving
+	// the host back into the native kernel stack.
+	// This is done to encrypt the traffic via XFRM.
+	//
+	// We need to enable the `accept_local` sysctl for all interfaces in this
+	// case.
+	if option.Config.EnableIPSec {
+		sysSettings = append(sysSettings,
+			tables.Sysctl{
+				Name:      []string{"net", "ipv4", "conf", "all", "accept_local"},
+				Val:       "1",
+				IgnoreErr: false,
+			})
+	} else {
+		sysSettings = append(sysSettings,
+			tables.Sysctl{
+				Name:      []string{"net", "ipv4", "conf", "all", "accept_local"},
+				Val:       "0",
+				IgnoreErr: false,
+			})
+	}
+
 	// BPF file system setup.
 	if err := bpf.MkdirBPF(bpf.TCGlobalsPath()); err != nil {
 		return fmt.Errorf("failed to create bpffs directory: %w", err)
