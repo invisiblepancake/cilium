@@ -482,7 +482,7 @@ tail_handle_ipv6(struct __ctx_buff *ctx, __u32 ipcache_srcid, const bool from_ho
 }
 
 __section_tail(CILIUM_MAP_CALLS, CILIUM_CALL_IPV6_FROM_HOST)
-int tail_handle_ipv6_from_host(struct __ctx_buff *ctx __maybe_unused)
+int tail_handle_ipv6_from_host(struct __ctx_buff *ctx)
 {
 	__u32 ipcache_srcid = 0;
 
@@ -622,7 +622,7 @@ handle_ipv4(struct __ctx_buff *ctx, __u32 secctx __maybe_unused,
 #ifdef ENABLE_NODEPORT
 	if (!from_host) {
 		if (!ctx_skip_nodeport(ctx)) {
-			bool __maybe_unused is_dsr = false;
+			bool is_dsr = false;
 
 			int ret = nodeport_lb4(ctx, ip4, ETH_HLEN, secctx, punt_to_stack,
 					       ext_err, &is_dsr);
@@ -1102,7 +1102,7 @@ do_netdev(struct __ctx_buff *ctx, __u16 proto, const bool from_host)
 		.reason = TRACE_REASON_UNKNOWN,
 		.monitor = TRACE_PAYLOAD_LEN,
 	};
-	__u32 __maybe_unused identity = 0;
+	__u32 identity = 0;
 	__u32 __maybe_unused ipcache_srcid = 0;
 	void __maybe_unused *data, *data_end;
 	struct ipv6hdr __maybe_unused *ip6;
@@ -1390,7 +1390,7 @@ int cil_from_host(struct __ctx_buff *ctx)
  * managed by Cilium (e.g., eth0).
  */
 __section_entry
-int cil_to_netdev(struct __ctx_buff *ctx __maybe_unused)
+int cil_to_netdev(struct __ctx_buff *ctx)
 {
 	__u32 magic = ctx->mark & MARK_MAGIC_HOST_MASK;
 	__u32 dst_sec_identity = UNKNOWN_ID;
@@ -1400,7 +1400,7 @@ int cil_to_netdev(struct __ctx_buff *ctx __maybe_unused)
 		.monitor = 0,
 	};
 	__be16 __maybe_unused proto = 0;
-	__u32 __maybe_unused vlan_id;
+	__u32 vlan_id;
 	int ret = CTX_ACT_OK;
 	__s8 ext_err = 0;
 
@@ -1776,7 +1776,7 @@ __section_tail(CILIUM_MAP_CALLS, CILIUM_CALL_IPV6_TO_HOST_POLICY_ONLY)
 static __always_inline
 int tail_ipv6_host_policy_ingress(struct __ctx_buff *ctx)
 {
-	struct trace_ctx __maybe_unused trace = {
+	struct trace_ctx trace = {
 		.reason = TRACE_REASON_UNKNOWN,
 		.monitor = 0,
 	};
@@ -1804,7 +1804,7 @@ __section_tail(CILIUM_MAP_CALLS, CILIUM_CALL_IPV4_TO_HOST_POLICY_ONLY)
 static __always_inline
 int tail_ipv4_host_policy_ingress(struct __ctx_buff *ctx)
 {
-	struct trace_ctx __maybe_unused trace = {
+	struct trace_ctx trace = {
 		.reason = TRACE_REASON_UNKNOWN,
 		.monitor = TRACE_PAYLOAD_LEN,
 	};
@@ -1831,7 +1831,7 @@ static __always_inline int
 /* Handles packet from a local endpoint entering the host namespace. Applies
  * ingress host policies.
  */
-to_host_from_lxc(struct __ctx_buff *ctx __maybe_unused)
+to_host_from_lxc(struct __ctx_buff *ctx)
 {
 	int ret = CTX_ACT_OK;
 	__s8 ext_err = 0;
