@@ -1275,6 +1275,7 @@ int cil_from_netdev(struct __ctx_buff *ctx)
 {
 	__u32 src_id = UNKNOWN_ID;
 	__be16 proto = 0;
+	__s8 ext_err = 0;
 
 #ifdef ENABLE_NODEPORT_ACCELERATION
 	__u32 flags = ctx_get_xfer(ctx, XFER_FLAGS);
@@ -1343,10 +1344,23 @@ int cil_from_netdev(struct __ctx_buff *ctx)
 		return CTX_ACT_OK;
 #endif
 
-	return do_netdev(ctx, proto, false);
+	ret = tail_call_internal(ctx, CILIUM_CALL_DO_NETDEV_INGRESS, &ext_err);
+	return send_drop_notify_error_ext(ctx, src_id, ret, ext_err,
+								   CTX_ACT_DROP, METRIC_INGRESS);
 
 drop_err:
 	return send_drop_notify_error(ctx, src_id, ret, CTX_ACT_DROP, METRIC_INGRESS);
+}
+
+__section_tail(CILIUM_MAP_CALLS, CILIUM_CALL_DO_NETDEV_INGRESS)
+int tail_handle_do_netdev_ingress(struct __ctx_buff *ctx)
+{
+	__be16 proto = 0;
+
+	/* Just load ethertype, validation is already done */
+	validate_ethertype(ctx, &proto);
+
+	return do_netdev(ctx, proto, false);
 }
 
 /*
@@ -1357,6 +1371,8 @@ __section_entry
 int cil_from_host(struct __ctx_buff *ctx)
 {
 	__be16 proto = 0;
+	__s8 ext_err = 0;
+	int ret;
 
 	/* Traffic from the host ns going through cilium_host device must
 	 * not be subject to EDT rate-limiting.
@@ -1368,7 +1384,7 @@ int cil_from_host(struct __ctx_buff *ctx)
 		__u32 src_sec_identity = HOST_ID;
 
 #ifdef ENABLE_HOST_FIREWALL
-		int ret = DROP_UNSUPPORTED_L2;
+		ret = DROP_UNSUPPORTED_L2;
 
 		return send_drop_notify(ctx, src_sec_identity, dst_sec_identity,
 					TRACE_EP_ID_UNKNOWN, ret,
@@ -1381,6 +1397,19 @@ int cil_from_host(struct __ctx_buff *ctx)
 		return CTX_ACT_OK;
 #endif /* ENABLE_HOST_FIREWALL */
 	}
+
+	ret = tail_call_internal(ctx, CILIUM_CALL_DO_NETDEV_EGRESS, &ext_err);
+	return send_drop_notify_error_ext(ctx, HOST_ID, ret, ext_err,
+								   CTX_ACT_DROP, METRIC_EGRESS);
+}
+
+__section_tail(CILIUM_MAP_CALLS, CILIUM_CALL_DO_NETDEV_EGRESS)
+int tail_handle_do_netdev_egress(struct __ctx_buff *ctx)
+{
+	__be16 proto = 0;
+
+	/* Just load ethertype, validation is already done */
+	validate_ethertype(ctx, &proto);
 
 	return do_netdev(ctx, proto, true);
 }
