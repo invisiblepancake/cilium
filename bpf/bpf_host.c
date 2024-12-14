@@ -1094,7 +1094,7 @@ static __always_inline int handle_l2_announcement(struct __ctx_buff *ctx)
 #endif
 
 static __always_inline int
-do_netdev(struct __ctx_buff *ctx, __u16 proto, const bool from_host)
+do_netdev(struct __ctx_buff *ctx, const bool from_host)
 {
 	enum trace_point obs_point = from_host ? TRACE_FROM_HOST :
 					     TRACE_FROM_NETWORK;
@@ -1110,6 +1110,7 @@ do_netdev(struct __ctx_buff *ctx, __u16 proto, const bool from_host)
 	int __maybe_unused hdrlen = 0;
 	__u8 __maybe_unused next_proto = 0;
 	__s8 __maybe_unused ext_err = 0;
+	__be16 proto = 0;
 	int ret;
 
 	if (from_host) {
@@ -1146,6 +1147,9 @@ do_netdev(struct __ctx_buff *ctx, __u16 proto, const bool from_host)
 	}
 
 	bpf_clear_meta(ctx);
+
+	/* Just load ethertype, validation is already done */
+	validate_ethertype(ctx, &proto);
 
 	switch (proto) {
 # if defined ENABLE_ARP_PASSTHROUGH || defined ENABLE_ARP_RESPONDER || \
@@ -1355,12 +1359,7 @@ drop_err:
 __section_tail(CILIUM_MAP_CALLS, CILIUM_CALL_DO_NETDEV_INGRESS)
 int tail_handle_do_netdev_ingress(struct __ctx_buff *ctx)
 {
-	__be16 proto = 0;
-
-	/* Just load ethertype, validation is already done */
-	validate_ethertype(ctx, &proto);
-
-	return do_netdev(ctx, proto, false);
+	return do_netdev(ctx, false);
 }
 
 /*
@@ -1406,12 +1405,7 @@ int cil_from_host(struct __ctx_buff *ctx)
 __section_tail(CILIUM_MAP_CALLS, CILIUM_CALL_DO_NETDEV_EGRESS)
 int tail_handle_do_netdev_egress(struct __ctx_buff *ctx)
 {
-	__be16 proto = 0;
-
-	/* Just load ethertype, validation is already done */
-	validate_ethertype(ctx, &proto);
-
-	return do_netdev(ctx, proto, true);
+	return do_netdev(ctx, true);
 }
 
 /*
